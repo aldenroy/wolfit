@@ -297,3 +297,33 @@ def test_link_posts_should_have_link_to_url(client, test_user):
     db.session.commit()
     response = client.get(url_for("post", post_id=link_post.id))
     assert link_post.url.encode() in response.data
+
+def test_up_vote_post(client, test_user, single_post):
+    login(client, test_user.username, PASSWORD)
+    response = client.get(url_for("up_vote", post_id=single_post.id))
+    assert response.status_code == 302  # Redirected
+    assert "/index" in response.headers["Location"]
+    # You can also check if the up vote was recorded in the database or logs
+
+def test_down_vote_post(client, test_user, single_post):
+    login(client, test_user.username, PASSWORD)
+    response = client.get(url_for("down_vote", post_id=single_post.id))
+    assert response.status_code == 302  # Redirected
+    assert "/index" in response.headers["Location"]
+    # You can also check if the down vote was recorded in the database or logs
+
+def test_up_vote_comment(client, test_user, single_post_with_comment):
+    login(client, test_user.username, PASSWORD)
+    comment_id = single_post_with_comment.comments[0].id
+    response = client.get(url_for("up_vote_comment", comment_id=comment_id))
+    assert response.status_code == 302  # Redirected
+    assert "/index" in response.headers["Location"]
+    # You can also check if the up vote for the comment was recorded in the database or logs
+
+def test_down_vote_comment(client, test_user, single_post_with_comment):
+    login(client, test_user.username, PASSWORD)
+    comment_id = single_post_with_comment.comments[0].id
+    response = client.get(url_for("down_vote_comment", comment_id=comment_id))
+    assert response.status_code == 302  # Redirected
+    assert "/index" in response.headers["Location"]
+    # You can also check if the down vote for the comment was recorded in the database or logs
