@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from flask_login import UserMixin
-
+from flask import current_app
 import markdown
-
+import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db, login
@@ -25,6 +25,7 @@ comment_vote = db.Table(
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
+    details = db.Column(db.String(120), index=True, unique=True)
     email = db.Column(db.String(120), index=True, unique=True)
     password_hash = db.Column(db.String(128))
     posts = db.relationship(
@@ -176,21 +177,30 @@ class ActivityLog(db.Model):
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     details = db.Column(db.Text)
+    username = db.Column(db.Text)
 
     def __repr__(self):
         return f"<ActivityLog id {self.id} - {self.details[:20]}>"
 
     @classmethod
-    def latest_entry(cls):
-        return cls.query.order_by(ActivityLog.id.desc()).first()
-
-    @classmethod
-    def log_event(cls, user_id, details):
-        e = cls(user_id=user_id, details=details)
+    def log_event(cls, user_id, username, details):
+        e = cls(user_id=user_id, username=username, details=details)
         db.session.add(e)
         db.session.commit()
 
-
+        # Invoke the microservice as a REST client
+        try:
+            microservice_url = "http://0.0.0.0:8080/api/activities"
+            payload = {
+                'user_id': user_id,
+                'username': username,
+                'details': details,
+            }
+            response = requests.post(microservice_url, json=payload)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Error invoking microservice: {e}")
+            
 @login.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))

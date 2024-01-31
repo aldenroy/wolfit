@@ -182,7 +182,7 @@ def up_vote(post_id):
     if current_user.is_authenticated:
         post = Post.query.filter_by(id=post_id).first_or_404()
         post.up_vote(current_user)
-        ActivityLog.log_event(current_user.id, f"Up Vote: {post}")
+        ActivityLog.log_event(current_user.id, current_user.username, f"Up Vote: {post}")
         return redirect(next_page or url_for("index"))
     else:
         return redirect(url_for("login"))
@@ -194,7 +194,7 @@ def down_vote(post_id):
     if current_user.is_authenticated:
         post = Post.query.filter_by(id=post_id).first_or_404()
         post.down_vote(current_user)
-        ActivityLog.log_event(current_user.id, f"Down Vote: {post}")
+        ActivityLog.log_event(current_user.id, current_user.username, f"Down Vote: {post}")
         return redirect(next_page or url_for("index"))
     else:
         return redirect(url_for("login"))
