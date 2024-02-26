@@ -4,6 +4,7 @@ from flask_login import UserMixin
 from flask import current_app
 import markdown
 import requests
+from tasks import post_activity
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db, login
@@ -188,18 +189,17 @@ class ActivityLog(db.Model):
         db.session.add(e)
         db.session.commit()
 
-        # Invoke the microservice as a REST client
+        # Invoke the Celery task asynchronously
         try:
-            microservice_url = "http://0.0.0.0:8080/api/activities"
-            payload = {
-                'user_id': user_id,
-                'username': username,
-                'details': details,
+            new_activity = {
+                "user_id": user_id,
+                "username": username,
+                "timestamp": str(datetime.utcnow()),
+                "details": details,
             }
-            response = requests.post(microservice_url, json=payload)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            current_app.logger.error(f"Error invoking microservice: {e}")
+            post_activity.delay(new_activity)
+        except Exception as e:
+            current_app.logger.error(f"Error invoking Celery task: {e}")
             
 @login.user_loader
 def load_user(user_id):
